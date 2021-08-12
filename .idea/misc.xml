@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/next.xml" value="0.22135416666666666" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/pause.xml" value="0.221875" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/play.xml" value="0.221875" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/previous.xml" value="0.22135416666666666" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/activity_main.xml" value="0.2318840579710145" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/fragment_list.xml" value="0.20572916666666666" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/fragment_play_controls.xml" value="0.20572916666666666" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/item_audio_file.xml" value="0.23052536231884058" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" value="0.3828125" />
+      </map>
+    </option>
+  </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="11" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>

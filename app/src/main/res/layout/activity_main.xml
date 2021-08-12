@@ -6,14 +6,68 @@
     android:layout_height="match_parent"
     tools:context=".ui.MainActivity">
 
-    <TextView
-        android:id="@+id/tv_media_files"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Get media files"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fc_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/controls"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/controls"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/controls_height"
+        android:background="@color/teal_light"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_previous"
+            android:layout_width="@dimen/controls_btn_size"
+            android:layout_height="@dimen/controls_btn_size"
+            android:scaleType="fitCenter"
+            android:src="@drawable/previous"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/iv_play_pause"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <ImageView
+            android:id="@+id/iv_play_pause"
+            android:layout_width="@dimen/controls_btn_size"
+            android:layout_height="@dimen/controls_btn_size"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/iv_next"
+            app:layout_constraintStart_toEndOf="@id/iv_previous"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white"
+            tools:src="@drawable/pause" />
+
+        <ImageView
+            android:id="@+id/iv_next"
+            android:layout_width="@dimen/controls_btn_size"
+            android:layout_height="@dimen/controls_btn_size"
+            android:scaleType="fitCenter"
+            android:src="@drawable/next"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="@id/iv_shuffle"
+            app:layout_constraintStart_toEndOf="@id/iv_play_pause"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <ImageView
+            android:id="@+id/iv_shuffle"
+            android:layout_width="@dimen/controls_btn_size"
+            android:layout_height="@dimen/controls_btn_size"
+            android:scaleType="fitCenter"
+            android:src="@drawable/shuffle_random"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/iv_next"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
