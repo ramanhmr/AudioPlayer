@@ -1,6 +1,8 @@
 package com.ramanhmr.audioplayer.services
 
 import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.media.MediaPlayer
@@ -8,12 +10,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.ArrayMap
 import androidx.core.app.NotificationCompat
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.drawable.toBitmap
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
@@ -22,19 +24,24 @@ import com.ramanhmr.audioplayer.daos.FileDao
 import com.ramanhmr.audioplayer.entities.AudioFile
 import com.ramanhmr.audioplayer.ui.MainActivity
 import com.ramanhmr.audioplayer.utils.LastItemsQueue
+import com.ramanhmr.audioplayer.utils.MetadataUtils
 import org.koin.android.ext.android.inject
+import org.koin.core.component.KoinApiExtension
 import kotlin.random.Random
 
+@KoinApiExtension
 class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListener {
     private val fileDao: FileDao by inject()
+    private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var mediaSession: MediaSessionCompat
     private lateinit var mediaSessionCallback: MediaSessionCompat.Callback
     private lateinit var playbackState: PlaybackStateCompat
     private lateinit var playbackStateBuilder: PlaybackStateCompat.Builder
+    private lateinit var metadataBuilder: MediaMetadataCompat.Builder
     private var audioList = arrayListOf<AudioFile>()
     private val mediaPlayer = MediaPlayer()
     private val audioMap = ArrayMap<Int, AudioFile>()
-    private lateinit var lastPlayed: LastItemsQueue<AudioFile>
+    private val lastPlayed = LastItemsQueue<AudioFile>(MAX_LAST_PLAYED)
     private var shuffleMode = RANDOM
     private var inPrevious = false
 
@@ -42,6 +49,21 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         super.onCreate()
 
         getAllMedia()
+
+//        val channel =
+//            NotificationChannelCompat.Builder(CHANNEL_ID, NotificationCompat.PRIORITY_MIN)
+//                .setName(NOTIFICATION_CHANNEL)
+//                .setShowBadge(false).setImportance(NotificationManagerCompat.IMPORTANCE_LOW)
+//                .build()
+        notificationManager = NotificationManagerCompat.from(applicationContext).apply {
+            createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    NOTIFICATION_CHANNEL,
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+            )
+        }
 
         mediaSessionCallback = object : MediaSessionCompat.Callback() {
             override fun onPlay() {
@@ -52,12 +74,21 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                 if (mediaPlayer.isPlaying) {
                     playbackState =
                         playbackStateBuilder
-                            .setState(PlaybackStateCompat.STATE_PLAYING, 0L, 1F)
-                            .setActions(PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_STOP)
+                            .setState(
+                                PlaybackStateCompat.STATE_PLAYING,
+                                mediaPlayer.currentPosition.toLong(),
+                                1F
+                            )
+                            .setActions(
+                                PlaybackStateCompat.ACTION_PAUSE
+                                        or PlaybackStateCompat.ACTION_STOP
+                                        or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                            )
                             .build()
                     mediaSession.setPlaybackState(playbackState)
                 }
-                showNotification()
+                startForegroundService(Intent(applicationContext, PlayerService::class.java))
+                showNotification(PAUSE)
                 // TODO: 01-Aug-21
             }
 
@@ -69,12 +100,20 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                 if (!mediaPlayer.isPlaying) {
                     playbackState =
                         playbackStateBuilder
-                            .setState(PlaybackStateCompat.STATE_PAUSED, 0L, 1F)
-                            .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP)
+                            .setState(
+                                PlaybackStateCompat.STATE_PAUSED,
+                                mediaPlayer.currentPosition.toLong(),
+                                1F
+                            )
+                            .setActions(
+                                PlaybackStateCompat.ACTION_PLAY
+                                        or PlaybackStateCompat.ACTION_STOP
+                                        or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                            )
                             .build()
                     mediaSession.setPlaybackState(playbackState)
                 }
-                // TODO: 01-Aug-21
+                showNotification(PLAY)
             }
 
             override fun onStop() {
@@ -82,6 +121,20 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
 
                 mediaPlayer.stop()
                 mediaPlayer.release()
+                playbackState =
+                    playbackStateBuilder
+                        .setState(
+                            PlaybackStateCompat.STATE_STOPPED,
+                            0,
+                            1F
+                        )
+                        .setActions(
+                            PlaybackStateCompat.ACTION_PLAY
+                                    or PlaybackStateCompat.ACTION_STOP
+                                    or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                        )
+                        .build()
+                mediaSession.setPlaybackState(playbackState)
                 stopSelf()
             }
 
@@ -108,27 +161,39 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                                 setDataSource(baseContext, audioMap[NEXT]!!.uri)
                                 prepare()
                             }
+                            audioMap[CURRENT] = audioMap[NEXT]
                             onPlay()
                             lastPlayed.add(audioMap[CURRENT]!!)
-                            audioMap[CURRENT] = audioMap[NEXT]
                         }
                         BY_SCORES -> {
                         }
                     }
                 }
 
-
-                // TODO: 01-Aug-21
+                updateMetadata()
             }
 
             override fun onSkipToPrevious() {
-                if (lastPlayed.hasPrevious()) {
-                    inPrevious = true
-                    val previous = lastPlayed.previous()!!
-                    playUri(previous.uri)
-                    audioMap[CURRENT] = previous
-                }
                 super.onSkipToPrevious()
+
+                if (mediaPlayer.currentPosition < TIME_RESTART) {
+                    if (lastPlayed.hasPrevious()) {
+                        inPrevious = true
+                        audioMap[CURRENT] = lastPlayed.previous()
+                        playUri(audioMap[CURRENT]!!.uri)
+                    }
+                } else {
+                    mediaPlayer.pause()
+                    mediaPlayer.seekTo(0)
+                    onPlay()
+                }
+
+                updateMetadata()
+            }
+
+            override fun onSeekTo(pos: Long) {
+                super.onSeekTo(pos)
+                mediaPlayer.seekTo(pos, MediaPlayer.SEEK_CLOSEST)
             }
 
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
@@ -146,13 +211,15 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                 lastPlayed.deleteHeadToCurrent()
 
                 if (audioMap[CURRENT] == null) {
-                    playUri(uri)
                     audioMap[CURRENT] = fileDao.getFileByUri(uri)
-                } else if (audioMap[CURRENT]!!.uri != uri) {
+                    playUri(uri)
                     lastPlayed.add(audioMap[CURRENT]!!)
-                    playUri(uri)
+                } else if (audioMap[CURRENT]!!.uri != uri) {
                     audioMap[CURRENT] = fileDao.getFileByUri(uri)
+                    playUri(uri)
+                    lastPlayed.add(audioMap[CURRENT]!!)
                 }
+                updateMetadata()
             }
 
             private fun playUri(uri: Uri) {
@@ -174,14 +241,13 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                         or PlaybackStateCompat.ACTION_STOP
             )
                 .build()
+        metadataBuilder = MediaMetadataCompat.Builder()
         mediaSession = MediaSessionCompat(baseContext, LOG_TAG).apply {
             setPlaybackState(playbackState)
             setCallback(mediaSessionCallback)
             isActive = true
         }
         sessionToken = mediaSession.sessionToken
-
-        lastPlayed = LastItemsQueue(MAX_LAST_PLAYED)
     }
 
     override fun onCompletion(mp: MediaPlayer?) {
@@ -201,6 +267,19 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         audioMap[NEXT] = audioList[nextIndex]
     }
 
+    private fun updateMetadata() {
+        with(audioMap[CURRENT]!!) {
+            val metadata = metadataBuilder.putString(MetadataUtils.ID, id.toString())
+                .putString(MetadataUtils.TITLE, title)
+                .putString(MetadataUtils.ARTIST, artist)
+                .putString(MetadataUtils.ALBUM, album)
+                .putString(MetadataUtils.URI, uri.toString())
+                .putLong(MetadataUtils.DURATION, duration.toLong())
+                .build()
+            mediaSession.setMetadata(metadata)
+        }
+    }
+
     override fun onGetRoot(
         clientPackageName: String,
         clientUid: Int,
@@ -218,7 +297,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             mediaItems.add(
                 MediaBrowserCompat.MediaItem(
                     MediaDescriptionCompat.Builder()
-                        .setMediaId(audioItem.uri.toString())
+                        .setMediaId(audioItem.id.toString())
                         .setTitle(audioItem.title)
                         .setSubtitle(audioItem.artist)
                         .setMediaUri(audioItem.uri)
@@ -231,27 +310,27 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         result.sendResult(mediaItems)
     }
 
-    private fun showNotification() {
-        val notification = getNotification()
+    private fun showNotification(buttonKey: Int) {
+        val notification = getNotification(buttonKey)
         startForeground(SERVICE_ID, notification)
+        notificationManager.notify(SERVICE_ID, notification)
     }
 
-    private fun getNotification(): Notification {
+    private fun getNotification(buttonKey: Int): Notification {
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID).apply {
             setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession.sessionToken)
-                    .setShowActionsInCompactView(0)
+                    .setShowActionsInCompactView(0, 1)
             )
             setSilent(true)
+            priority = NotificationCompat.PRIORITY_MAX
+            setCategory(MEDIA_SESSION_SERVICE)
 
-            // TODO: 01-Aug-21
-            setLargeIcon(
-                ResourcesCompat.getDrawable(resources, R.drawable.defauld_album, null)?.toBitmap()
-            )
-            setContentTitle("Placeholder title")
-            setContentText("Placeholder artist - Placeholder album")
-            setSmallIcon(R.drawable.defauld_album)
+            setLargeIcon(MetadataUtils.getAlbumArt(audioMap[CURRENT]!!.uri, this@PlayerService))
+            setContentTitle("${audioMap[CURRENT]?.title}")
+            setContentText("${audioMap[CURRENT]?.artist} - ${audioMap[CURRENT]?.album}")
+            setSmallIcon(R.drawable.default_album)
 
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
@@ -261,13 +340,39 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                     PlaybackStateCompat.ACTION_STOP
                 )
             )
+            when (buttonKey) {
+                PAUSE -> {
+                    addAction(
+                        NotificationCompat.Action(
+                            R.drawable.pause,
+                            "Pause",
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this@PlayerService,
+                                PlaybackStateCompat.ACTION_PAUSE
+                            )
+                        )
+                    )
+                }
+                PLAY -> {
+                    addAction(
+                        NotificationCompat.Action(
+                            R.drawable.play,
+                            "Play",
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this@PlayerService,
+                                PlaybackStateCompat.ACTION_PLAY
+                            )
+                        )
+                    )
+                }
+            }
             addAction(
                 NotificationCompat.Action(
-                    R.drawable.pause,
-                    "Pause",
+                    R.drawable.next,
+                    "Next",
                     MediaButtonReceiver.buildMediaButtonPendingIntent(
                         this@PlayerService,
-                        PlaybackStateCompat.ACTION_PAUSE
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                     )
                 )
             )
@@ -278,7 +383,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             this,
             0,
             notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         notificationBuilder.setContentIntent(pendingIntent)
 
@@ -289,11 +394,17 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         const val ROOT = "/"
 
         private const val MAX_LAST_PLAYED = 10
+        private const val TIME_RESTART = 5000L
 
         private const val LOG_TAG = "THIS_PLAYER"
         private const val SERVICE_ID = 315465
         private const val NOTIFICATION_CHANNEL = "com.rammanhmr.audioplayer"
         private const val CHANNEL_ID = "CHANNEL_ID"
+        private const val IMAGE_DIM = 500
+
+        //notification state keys
+        private const val PLAY = 1
+        private const val PAUSE = 2
 
         //audioMap keys
         private const val CURRENT = 1

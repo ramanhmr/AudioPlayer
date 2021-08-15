@@ -52,16 +52,17 @@ class FileDao(private val context: Context) {
 
         val fileUri = ContentUris.withAppendedId(baseUri, id)
 
-        return AudioFile(fileUri, title, album, artist, duration)
+        return AudioFile(id, fileUri, title, album, artist, duration)
     }
 
     private fun Cursor.getAudioFileSetUri(fileUri: Uri): AudioFile {
+        val id = this.getLong(0)
         val title = this.getString(1)
         val album = this.getString(2)
         val artist = this.getString(3)
         val duration = this.getInt(4)
 
-        return AudioFile(fileUri, title, album, artist, duration)
+        return AudioFile(id, fileUri, title, album, artist, duration)
     }
 
     companion object {

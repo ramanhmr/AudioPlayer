@@ -4,7 +4,7 @@ import java.util.*
 
 class LastItemsQueue<E>(private val maxItemCount: Int) {
     private val list = LinkedList<E>()
-    private var currentIndex = -1
+    private var currentIndex = 0
 
     fun add(e: E): Boolean {
         with(list) {

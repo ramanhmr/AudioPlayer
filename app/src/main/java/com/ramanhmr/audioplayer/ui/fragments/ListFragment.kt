@@ -1,13 +1,17 @@
-package com.ramanhmr.audioplayer.ui
+package com.ramanhmr.audioplayer.ui.fragments
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.DividerItemDecoration
+import com.ramanhmr.audioplayer.R
 import com.ramanhmr.audioplayer.databinding.FragmentListBinding
+import com.ramanhmr.audioplayer.ui.MainActivity
+import com.ramanhmr.audioplayer.ui.TrackAdapter
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
 
 class ListFragment : Fragment() {
@@ -26,9 +30,17 @@ class ListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val adapter = TrackAdapter(activity as MainActivity)
-        binding?.rvSongs?.adapter = adapter
-        mainViewModel.audioLiveData.observe(viewLifecycleOwner, Observer { adapter.submitList(it) })
+        val divider = DividerItemDecoration(context, DividerItemDecoration.VERTICAL)
+        divider.setDrawable(ResourcesCompat.getDrawable(resources, R.drawable.divider, null)!!)
+        val trackAdapter = TrackAdapter(activity as MainActivity)
+        binding!!.rvSongs.apply {
+            adapter = trackAdapter
+            addItemDecoration(divider)
+        }
+
+        mainViewModel.audioLiveData.observe(
+            viewLifecycleOwner,
+            { trackAdapter.submitList(it) })
     }
 
     override fun onDestroyView() {

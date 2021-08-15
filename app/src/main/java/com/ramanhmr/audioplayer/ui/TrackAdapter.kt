@@ -1,6 +1,7 @@
 package com.ramanhmr.audioplayer.ui
 
 import android.os.Bundle
+import android.support.v4.media.MediaMetadataCompat
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
@@ -8,7 +9,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.ramanhmr.audioplayer.databinding.ItemAudioBinding
 import com.ramanhmr.audioplayer.entities.AudioItem
 import com.ramanhmr.audioplayer.services.PlayerService
+import com.ramanhmr.audioplayer.utils.MetadataUtils
+import org.koin.core.component.KoinApiExtension
 
+@KoinApiExtension
 class TrackAdapter(private val activity: MainActivity) :
     ListAdapter<AudioItem, TrackAdapter.AudioViewHolder>(AudioItem.DiffUtilCallback()) {
 
@@ -34,7 +38,7 @@ class TrackAdapter(private val activity: MainActivity) :
             with(binding) {
                 tvTitle.text = audioItem.file.title
                 tvArtist.text = audioItem.file.artist
-                tvDuration.text = audioItem.file.durationToString()
+                tvDuration.text = MetadataUtils.durationToString(audioItem.file.duration)
 
                 root.setOnClickListener {
                     val bundle = Bundle().apply {
@@ -45,7 +49,17 @@ class TrackAdapter(private val activity: MainActivity) :
                         bundle
                     )
                     activity.setControlsPause()
-                    activity.showControls()
+                    activity.showControls(audioItem.file.uri)
+
+                    val metadata = MediaMetadataCompat.Builder()
+                        .putString(MetadataUtils.ID, audioItem.file.id.toString())
+                        .putString(MetadataUtils.TITLE, audioItem.file.title)
+                        .putString(MetadataUtils.ARTIST, audioItem.file.artist)
+                        .putString(MetadataUtils.ALBUM, audioItem.file.album)
+                        .putString(MetadataUtils.URI, audioItem.file.uri.toString())
+                        .putLong(MetadataUtils.DURATION, audioItem.file.duration.toLong())
+                        .build()
+                    activity.showInfo(metadata)
                 }
             }
         }

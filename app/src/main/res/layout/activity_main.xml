@@ -19,7 +19,19 @@
         android:layout_height="@dimen/controls_height"
         android:background="@color/teal_light"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:visibility="visible">
+
+        <ImageView
+            android:id="@+id/iv_art"
+            android:layout_width="@dimen/controls_btn_size"
+            android:layout_height="@dimen/controls_btn_size"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/iv_previous"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:src="@drawable/default_album" />
 
         <ImageView
             android:id="@+id/iv_previous"
@@ -29,7 +41,7 @@
             android:src="@drawable/previous"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/iv_play_pause"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/iv_art"
             app:layout_constraintTop_toTopOf="parent"
             app:tint="@color/white" />
 
