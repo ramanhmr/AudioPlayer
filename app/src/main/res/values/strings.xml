@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">AudioPlayer</string>
+    <string name="ask_permission">For this app to work it must have access to audiofiles on your device.\nPlease, give permission by clicking button below.</string>
+    <string name="permission_btn">GIVE PERMISSION</string>
+    <string name="lyrics">lyrics</string>
+    <string name="edit_tags">edit tags</string>
 </resources>

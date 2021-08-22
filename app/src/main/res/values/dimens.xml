@@ -2,4 +2,5 @@
 <resources>
     <dimen name="controls_height">80dp</dimen>
     <dimen name="controls_btn_size">40dp</dimen>
+    <dimen name="notification_btn_size">40dp</dimen>
 </resources>

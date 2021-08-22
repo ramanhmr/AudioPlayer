@@ -10,11 +10,11 @@ import com.ramanhmr.audioplayer.entities.AudioFile
 
 class FileDao(private val context: Context) {
 
-    fun getAllFiles(): List<AudioFile> {
+    fun getAllFiles(sortOrder: String? = MediaStore.Audio.Media.TITLE): List<AudioFile> {
         val files = mutableListOf<AudioFile>()
 
         val baseUri = getMainUri()
-        val cursor = getCursor(baseUri, getProjection())
+        val cursor = getCursor(baseUri, sortOrder, getProjection())
         while (cursor?.moveToNext() == true) {
             files += cursor.getAudioFile(baseUri)
         }
@@ -24,15 +24,15 @@ class FileDao(private val context: Context) {
     }
 
     fun getFileByUri(uri: Uri): AudioFile? {
-        val cursor = getCursor(uri, getProjection())
+        val cursor = getCursor(uri, null, getProjection())
         val file = if (cursor?.moveToFirst() == true) cursor.getAudioFileSetUri(uri) else null
         cursor?.close()
 
         return file
     }
 
-    private fun getCursor(uri: Uri, projection: Array<String>): Cursor? =
-        context.contentResolver.query(uri, projection, null, null, null)
+    private fun getCursor(uri: Uri, sortOrder: String?, projection: Array<String>): Cursor? =
+        context.contentResolver.query(uri, projection, null, null, sortOrder)
 
     private fun getMainUri(): Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)

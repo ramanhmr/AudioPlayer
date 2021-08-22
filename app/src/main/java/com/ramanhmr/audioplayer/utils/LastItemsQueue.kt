@@ -2,7 +2,7 @@ package com.ramanhmr.audioplayer.utils
 
 import java.util.*
 
-class LastItemsQueue<E>(private val maxItemCount: Int) {
+class LastItemsQueue<E>(private val maxItemCount: Int) : Iterable<E> {
     private val list = LinkedList<E>()
     private var currentIndex = 0
 
@@ -46,5 +46,14 @@ class LastItemsQueue<E>(private val maxItemCount: Int) {
             list.remove()
         }
         currentIndex = 0
+    }
+
+    override fun iterator() = object : Iterator<E> {
+        val size = list.size
+        var i = 0
+
+        override fun hasNext(): Boolean = i < size
+
+        override fun next(): E = list[i++]
     }
 }

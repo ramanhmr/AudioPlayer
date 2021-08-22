@@ -22,11 +22,11 @@
         android:id="@+id/tv_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="marquee"
         android:gravity="center"
+        android:marqueeRepeatLimit="marquee_forever"
         android:maxLines="1"
         android:scrollHorizontally="true"
-        android:ellipsize="marquee"
-        android:marqueeRepeatLimit="marquee_forever"
         android:textSize="32sp"
         app:layout_constraintBottom_toTopOf="@id/tv_album"
         app:layout_constraintTop_toBottomOf="@id/iv_art"
@@ -36,12 +36,12 @@
         android:id="@+id/tv_album"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:scrollHorizontally="true"
-        android:gravity="center"
-        android:maxLines="1"
-        android:singleLine="true"
         android:ellipsize="marquee"
+        android:gravity="center"
         android:marqueeRepeatLimit="marquee_forever"
+        android:maxLines="1"
+        android:scrollHorizontally="true"
+        android:singleLine="true"
         android:textSize="24sp"
         app:layout_constraintBottom_toTopOf="@id/tv_artist"
         app:layout_constraintTop_toBottomOf="@id/tv_title"
@@ -51,11 +51,11 @@
         android:id="@+id/tv_artist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:maxLines="1"
         android:ellipsize="marquee"
-        android:scrollHorizontally="true"
+        android:gravity="center"
         android:marqueeRepeatLimit="marquee_forever"
+        android:maxLines="1"
+        android:scrollHorizontally="true"
         android:textSize="24sp"
         app:layout_constraintBottom_toTopOf="@id/tv_current_time"
         app:layout_constraintTop_toBottomOf="@id/tv_album"
@@ -65,8 +65,8 @@
         android:id="@+id/tv_current_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/teal_dark"
         android:gravity="start"
+        android:textColor="@color/teal_dark"
         app:layout_constraintBottom_toTopOf="@id/seek_bar"
         app:layout_constraintStart_toStartOf="parent"
         tools:text="00:00" />
@@ -84,6 +84,48 @@
         android:id="@+id/seek_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintBottom_toTopOf="@id/more_info_btns"
+        app:layout_constraintTop_toBottomOf="@id/tv_artist" />
+
+    <LinearLayout
+        android:id="@+id/more_info_btns"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/teal_light"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <Button
+            android:id="@+id/btn_edit_tags"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:drawableLeft="@drawable/edit"
+            android:gravity="center"
+            android:text="@string/edit_tags"
+            android:textAllCaps="false"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@color/gray" />
+
+        <Button
+            android:id="@+id/btn_lyrics"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:drawableLeft="@drawable/text"
+            android:gravity="center"
+            android:text="@string/lyrics"
+            android:textAllCaps="false"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

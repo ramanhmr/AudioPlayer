@@ -1,8 +1,6 @@
 package com.ramanhmr.audioplayer.ui
 
-import android.Manifest
 import android.content.ComponentName
-import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
@@ -13,15 +11,15 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.ramanhmr.audioplayer.R
 import com.ramanhmr.audioplayer.databinding.ActivityMainBinding
+import com.ramanhmr.audioplayer.repositories.ArtRepository
 import com.ramanhmr.audioplayer.services.PlayerService
 import com.ramanhmr.audioplayer.ui.fragments.InfoFragment
 import com.ramanhmr.audioplayer.ui.fragments.ListFragment
 import com.ramanhmr.audioplayer.utils.MetadataUtils
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
+import org.koin.android.ext.android.inject
 import org.koin.android.viewmodel.ext.android.viewModel
 import org.koin.core.component.KoinApiExtension
 
@@ -30,10 +28,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModel()
+    private val artRepository: ArtRepository by inject()
     private lateinit var mediaBrowser: MediaBrowserCompat
-    private lateinit var mediaController: MediaControllerCompat
+    lateinit var mediaController: MediaControllerCompat
     private lateinit var subscriptionCallback: MediaBrowserCompat.SubscriptionCallback
-    private lateinit var callback: MediaControllerCompat.Callback
+    private lateinit var controllerCallback: MediaControllerCompat.Callback
     private var showingInfo = false
     var shuffleMode = PlayerService.RANDOM
         private set
@@ -43,57 +42,17 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        permissionCheck()
+        viewModel.updateAudio()
 
-        callback = object : MediaControllerCompat.Callback() {
-            override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-                super.onPlaybackStateChanged(state)
-
-                when (state?.state) {
-                    PlaybackStateCompat.STATE_PAUSED -> setControlsPlay()
-                    PlaybackStateCompat.STATE_PLAYING -> setControlsPause()
-                    PlaybackStateCompat.STATE_STOPPED -> hideControls()
-                }
-            }
-
-            override fun onMetadataChanged(metadata: MediaMetadataCompat) {
-                super.onMetadataChanged(metadata)
-                val uri =
-                    Uri.parse(metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
-                binding.ivArt.setImageBitmap(MetadataUtils.getAlbumArt(uri, baseContext))
-                if (showingInfo) {
-                    showInfo(metadata)
-                }
-            }
+        controllerCallback = getControllerCallback()
+        subscriptionCallback = object : MediaBrowserCompat.SubscriptionCallback() {
+            // TODO: 16-Aug-21
         }
-        subscriptionCallback = object : MediaBrowserCompat.SubscriptionCallback() {}
 
         mediaBrowser = MediaBrowserCompat(
             this,
             ComponentName(this, PlayerService::class.java),
-            object : MediaBrowserCompat.ConnectionCallback() {
-                override fun onConnected() {
-                    if (mediaBrowser.isConnected) {
-
-                        mediaBrowser.unsubscribe(PlayerService.ROOT)
-                        mediaBrowser.subscribe(PlayerService.ROOT, subscriptionCallback)
-
-                        mediaController = MediaControllerCompat(
-                            this@MainActivity,
-                            mediaBrowser.sessionToken
-                        )
-                        MediaControllerCompat.setMediaController(
-                            this@MainActivity,
-                            mediaController
-                        )
-                        mediaController.registerCallback(callback)
-
-                        // TODO: 01-Aug-21
-//                        onConnected(mediaControllerCompat)
-                    }
-
-                }
-            },
+            getConnectionCallback(),
             null
         )
 
@@ -107,7 +66,6 @@ class MainActivity : AppCompatActivity() {
             ivArt.setOnClickListener { showInfo(mediaController.metadata) }
         }
 
-
         supportFragmentManager.beginTransaction()
             .add(
                 binding.fcList.id,
@@ -115,6 +73,73 @@ class MainActivity : AppCompatActivity() {
                 null,
                 LIST_FRAGMENT_TAG
             ).commit()
+    }
+
+    private fun getConnectionCallback() = object : MediaBrowserCompat.ConnectionCallback() {
+        override fun onConnected() {
+            if (mediaBrowser.isConnected) {
+
+                mediaBrowser.unsubscribe(PlayerService.ROOT)
+                mediaBrowser.subscribe(PlayerService.ROOT, subscriptionCallback)
+
+                mediaController = MediaControllerCompat(
+                    this@MainActivity,
+                    mediaBrowser.sessionToken
+                )
+                MediaControllerCompat.setMediaController(
+                    this@MainActivity,
+                    mediaController
+                )
+                mediaController.registerCallback(controllerCallback)
+
+                checkIfPlaying()
+            }
+        }
+    }
+
+    private fun checkIfPlaying() {
+        if (mediaController.playbackState.state == PlaybackStateCompat.STATE_PLAYING) {
+            showInfo(mediaController.metadata)
+            viewModel.startProgressSetPosition(mediaController.playbackState.position.toInt())
+            showControls(
+                Uri.parse(
+                    mediaController.metadata.getString(
+                        MetadataUtils.URI
+                    )
+                )
+            )
+        }
+    }
+
+    private fun getControllerCallback() = object : MediaControllerCompat.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
+            super.onPlaybackStateChanged(state)
+
+            when (state?.state) {
+                PlaybackStateCompat.STATE_PAUSED -> {
+                    setControlsPlay()
+                    viewModel.stopProgressSetPosition(state.position.toInt())
+                }
+                PlaybackStateCompat.STATE_PLAYING -> {
+                    setControlsPause()
+                    viewModel.startProgressSetPosition(state.position.toInt())
+                }
+                PlaybackStateCompat.STATE_STOPPED -> {
+                    hideControls()
+                    viewModel.stopProgressSetPosition(state.position.toInt())
+                }
+            }
+        }
+
+        override fun onMetadataChanged(metadata: MediaMetadataCompat) {
+            super.onMetadataChanged(metadata)
+            val uri =
+                Uri.parse(metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
+            binding.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, baseContext))
+            if (showingInfo) {
+                showInfo(metadata)
+            }
+        }
     }
 
     override fun onStart() {
@@ -129,51 +154,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        MediaControllerCompat.getMediaController(this)?.unregisterCallback(callback)
+        MediaControllerCompat.getMediaController(this)?.unregisterCallback(controllerCallback)
         mediaBrowser.disconnect()
     }
 
-    private fun permissionCheck() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionRequest()
-        } else {
-            viewModel.updateAudio()
-        }
-    }
-
-    private fun permissionRequest() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-            REQUEST_CODE
-        )
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == REQUEST_CODE) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                viewModel.updateAudio()
-            } else {
-                // TODO: 28-Jul-21 ask again politely
-                permissionRequest()
-            }
-        }
-    }
-
     fun showControls(uri: Uri? = null) {
+        checkControlsPausePlay()
         binding.controls.visibility = View.VISIBLE
         if (uri != null) {
-            binding.ivArt.setImageBitmap(MetadataUtils.getAlbumArt(uri, this@MainActivity))
+            binding.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, this@MainActivity))
         }
     }
 
@@ -255,9 +244,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val REQUEST_CODE = 3001
         private const val BACKSTACK = "Backstack"
-
         private const val LIST_FRAGMENT_TAG = "ListFragment"
         private const val INFO_FRAGMENT_TAG = "InfoFragment"
     }

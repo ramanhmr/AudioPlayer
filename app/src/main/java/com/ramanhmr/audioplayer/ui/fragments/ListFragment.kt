@@ -6,17 +6,17 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.ramanhmr.audioplayer.R
 import com.ramanhmr.audioplayer.databinding.FragmentListBinding
 import com.ramanhmr.audioplayer.ui.MainActivity
 import com.ramanhmr.audioplayer.ui.TrackAdapter
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
+import org.koin.android.viewmodel.ext.android.sharedViewModel
 
 class ListFragment : Fragment() {
     private var binding: FragmentListBinding? = null
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by sharedViewModel()
 
     override fun onCreateView(
         inflater: LayoutInflater,

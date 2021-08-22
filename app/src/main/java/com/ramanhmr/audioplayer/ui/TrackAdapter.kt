@@ -44,8 +44,11 @@ class TrackAdapter(private val activity: MainActivity) :
                     val bundle = Bundle().apply {
                         putInt(PlayerService.SHUFFLE_BUNDLE_KEY, activity.shuffleMode)
                     }
-                    activity.mediaController.transportControls.playFromUri(
-                        audioItem.file.uri,
+
+                    val fileUri = audioItem.file.uri
+                    val fileDuration = audioItem.file.duration
+                    activity.mediaController.transportControls?.playFromUri(
+                        fileUri,
                         bundle
                     )
                     activity.setControlsPause()
@@ -56,8 +59,8 @@ class TrackAdapter(private val activity: MainActivity) :
                         .putString(MetadataUtils.TITLE, audioItem.file.title)
                         .putString(MetadataUtils.ARTIST, audioItem.file.artist)
                         .putString(MetadataUtils.ALBUM, audioItem.file.album)
-                        .putString(MetadataUtils.URI, audioItem.file.uri.toString())
-                        .putLong(MetadataUtils.DURATION, audioItem.file.duration.toLong())
+                        .putString(MetadataUtils.URI, fileUri.toString())
+                        .putLong(MetadataUtils.DURATION, fileDuration.toLong())
                         .build()
                     activity.showInfo(metadata)
                 }
