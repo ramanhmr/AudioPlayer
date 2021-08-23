@@ -2,10 +2,9 @@ package com.ramanhmr.audioplayer
 
 import android.app.Application
 import com.ramanhmr.audioplayer.daos.FileDao
-import com.ramanhmr.audioplayer.repositories.ApiTagsRepository
-import com.ramanhmr.audioplayer.repositories.ArtRepository
-import com.ramanhmr.audioplayer.repositories.AudioRepository
-import com.ramanhmr.audioplayer.repositories.StatRepository
+import com.ramanhmr.audioplayer.repositories.*
+import com.ramanhmr.audioplayer.restApi.LyricsApiUtil
+import com.ramanhmr.audioplayer.viewmodels.InfoViewModel
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -24,6 +23,7 @@ class AudioPlayerApp : Application() {
 
     private val viewModelsModule = module {
         viewModel { MainViewModel(get()) }
+        viewModel { InfoViewModel(get()) }
     }
 
     private val repositoryModule = module {
@@ -31,9 +31,11 @@ class AudioPlayerApp : Application() {
         factory { AudioRepository(get(), get()) }
         factory { StatRepository() }
         single { ArtRepository }
+        factory { LyricsRepository(get()) }
     }
 
     private val dataAccessModule = module {
         factory { FileDao(get()) }
+        factory { LyricsApiUtil.getLyricsApi() }
     }
 }

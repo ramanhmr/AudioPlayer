@@ -123,6 +123,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                             PlaybackStateCompat.ACTION_PAUSE
                                     or PlaybackStateCompat.ACTION_STOP
                                     or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                    or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                         )
                         .build()
                 mediaSession.setPlaybackState(playbackState)
@@ -149,6 +150,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                             PlaybackStateCompat.ACTION_PLAY
                                     or PlaybackStateCompat.ACTION_STOP
                                     or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                    or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                         )
                         .build()
                 mediaSession.setPlaybackState(playbackState)
@@ -170,8 +172,6 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                     )
                     .setActions(
                         PlaybackStateCompat.ACTION_PLAY
-                                or PlaybackStateCompat.ACTION_STOP
-                                or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                     )
                     .build()
             mediaSession.setPlaybackState(playbackState)

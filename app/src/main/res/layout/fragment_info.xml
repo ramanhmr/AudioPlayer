@@ -128,4 +128,11 @@
             app:layout_constraintEnd_toEndOf="parent" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/tv_lyrics"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/white"
+        android:visibility="gone" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

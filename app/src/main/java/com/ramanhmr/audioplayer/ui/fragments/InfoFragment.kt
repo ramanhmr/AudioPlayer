@@ -14,17 +14,19 @@ import com.ramanhmr.audioplayer.repositories.ArtRepository
 import com.ramanhmr.audioplayer.services.PlayerService
 import com.ramanhmr.audioplayer.ui.MainActivity
 import com.ramanhmr.audioplayer.utils.MetadataUtils
+import com.ramanhmr.audioplayer.viewmodels.InfoViewModel
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
 import org.koin.android.ext.android.inject
 import org.koin.android.viewmodel.ext.android.sharedViewModel
+import org.koin.android.viewmodel.ext.android.viewModel
 import org.koin.core.component.KoinApiExtension
 
 @KoinApiExtension
 class InfoFragment : Fragment() {
     private var binding: FragmentInfoBinding? = null
     private val mainViewModel: MainViewModel by sharedViewModel()
+    private val infoViewModel: InfoViewModel by viewModel()
     private val artRepository: ArtRepository by inject()
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,11 +53,14 @@ class InfoFragment : Fragment() {
                 binding?.let {
                     val uri = Uri.parse(this.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
                     it.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, requireContext()))
-                    it.tvTitle.text = this.getString(MetadataUtils.TITLE)
+                    val title = this.getString(MetadataUtils.TITLE)
+                    val artist = this.getString(MetadataUtils.ARTIST)
+                    infoViewModel.getLyrics(title, artist)
+                    it.tvTitle.text = title
                     it.tvTitle.isSelected = true
                     it.tvAlbum.text = this.getString(MetadataUtils.ALBUM)
                     it.tvAlbum.isSelected = true
-                    it.tvArtist.text = this.getString(MetadataUtils.ARTIST)
+                    it.tvArtist.text = artist
                     it.tvEndTime.text =
                         MetadataUtils.durationToString(this.getLong(MetadataUtils.DURATION))
                     it.tvEndTime.isSelected = true
@@ -64,6 +69,15 @@ class InfoFragment : Fragment() {
                     it.seekBar.setOnSeekBarChangeListener(getOnSeekBarChangeListener())
                     it.tvCurrentTime.text = MetadataUtils.durationToString(0)
                 }
+            }
+        }
+        with(binding!!) {
+            btnLyrics.setOnClickListener {
+                infoViewModel.lyricsLiveData.observe(viewLifecycleOwner, {
+                    tvLyrics.visibility = View.VISIBLE
+                    tvLyrics.text = it
+                })
+
             }
         }
         requireActivity().mediaController.transportControls.sendCustomAction(
