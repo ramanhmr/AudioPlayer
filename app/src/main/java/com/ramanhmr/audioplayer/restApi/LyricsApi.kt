@@ -10,5 +10,5 @@ interface LyricsApi {
     suspend fun getLyricsResponse(
         @Query("q_track") track: String,
         @Query("q_artist") artist: String
-    ): LyricsResponseEntity
+    ): LyricsResponseModel
 }

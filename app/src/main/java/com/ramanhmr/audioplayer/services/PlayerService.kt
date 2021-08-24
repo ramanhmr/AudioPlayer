@@ -54,6 +54,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
     private val audioMap = ArrayMap<Int, AudioFile>()
     private val lastPlayed = LastItemsQueue<AudioFile>(MAX_LAST_PLAYED)
     private var shuffleMode = RANDOM
+    private var currentIndex: Int = -1
     private var inPrevious = false
     private var playbackSpeed = 1F
 
@@ -88,22 +89,28 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         override fun onCustomAction(action: String, extras: Bundle?) {
             super.onCustomAction(action, extras)
 
-            if (action == REQUEST_STATE && initialized) {
-                playbackState =
-                    playbackStateBuilder
-                        .setState(
-                            if (mediaPlayer.isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
-                            mediaPlayer.currentPosition.toLong(),
-                            playbackSpeed
-                        )
-                        .setActions(
-                            PlaybackStateCompat.ACTION_STOP
-                                    or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                    or if (mediaPlayer.isPlaying) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
-                        )
-                        .build()
-                mediaSession.setPlaybackState(playbackState)
+            when (action) {
+                SET_SHUFFLE -> setShuffleFromExtras(extras)
+                REQUEST_STATE -> {
+                    if (initialized) {
+                        playbackState =
+                            playbackStateBuilder
+                                .setState(
+                                    if (mediaPlayer.isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
+                                    mediaPlayer.currentPosition.toLong(),
+                                    playbackSpeed
+                                )
+                                .setActions(
+                                    PlaybackStateCompat.ACTION_STOP
+                                            or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                            or if (mediaPlayer.isPlaying) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
+                                )
+                                .build()
+                        mediaSession.setPlaybackState(playbackState)
+                    }
+                }
             }
+
         }
 
         override fun onPlay() {
@@ -193,19 +200,12 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             } else {
                 when (shuffleMode) {
                     RANDOM -> {
-                        setRandomNext()
-
-                        with(mediaPlayer) {
-                            stop()
-                            reset()
-                            setDataSource(baseContext, audioMap[NEXT]!!.uri)
-                            prepare()
-                        }
-                        audioMap[CURRENT] = audioMap[NEXT]
-                        onPlay()
-                        lastPlayed.add(audioMap[CURRENT]!!)
+                        playRandomNext()
                     }
                     BY_SCORES -> {
+                    }
+                    ORDER -> {
+                        playOrderedNext()
                     }
                 }
             }
@@ -216,11 +216,20 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             super.onSkipToPrevious()
 
             if (mediaPlayer.currentPosition < TIME_RESTART) {
-                if (lastPlayed.hasPrevious()) {
-                    inPrevious = true
-                    audioMap[CURRENT] = lastPlayed.previous()
-                    playUri(audioMap[CURRENT]!!.uri)
-                    updateMetadata()
+                when (shuffleMode) {
+                    ORDER -> {
+                        var previousIndex = currentIndex
+                        if (--previousIndex < 0) previousIndex = audioList.size
+                        audioMap[NEXT] = audioList[previousIndex]
+                    }
+                    else -> {
+                        if (lastPlayed.hasPrevious()) {
+                            inPrevious = true
+                            audioMap[CURRENT] = lastPlayed.previous()
+                            playUri(audioMap[CURRENT]!!.uri)
+                            updateMetadata()
+                        }
+                    }
                 }
             } else {
                 mediaPlayer.pause()
@@ -243,10 +252,11 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         override fun onPlayFromUri(uri: Uri, extras: Bundle?) {
             super.onPlayFromUri(uri, extras)
 
-            if (extras != null) {
-                shuffleMode = extras.getInt(SHUFFLE_BUNDLE_KEY)
-            }
+            setShuffleFromExtras(extras)
             lastPlayed.deleteHeadToCurrent()
+            audioList.forEachIndexed { index, audioFile ->
+                if (audioFile.uri == uri) currentIndex = index
+            }
 
             if (audioMap[CURRENT] == null) {
                 audioMap[CURRENT] = fileDao.getFileByUri(uri)
@@ -291,12 +301,40 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         audioList.addAll(fileDao.getAllFiles())
     }
 
-    private fun setRandomNext() {
+    private fun setShuffleFromExtras(extras: Bundle?) {
+        if (extras != null && extras.containsKey(SHUFFLE_BUNDLE_KEY)) {
+            shuffleMode = extras.getInt(SHUFFLE_BUNDLE_KEY)
+        }
+    }
+
+    private fun playNext() {
+        with(mediaPlayer) {
+            stop()
+            reset()
+            setDataSource(baseContext, audioMap[NEXT]!!.uri)
+            prepare()
+        }
+        audioMap[CURRENT] = audioMap[NEXT]
+        mediaSessionCallback.onPlay()
+        lastPlayed.add(audioMap[CURRENT]!!)
+    }
+
+    private fun playRandomNext() {
         var nextIndex = Random.Default.nextInt(audioList.size)
         while (audioList[nextIndex].uri == audioMap[CURRENT]?.uri) {
             nextIndex = (nextIndex + 1) % audioList.size
         }
         audioMap[NEXT] = audioList[nextIndex]
+        playNext()
+        currentIndex = nextIndex
+    }
+
+    private fun playOrderedNext() {
+        var nextIndex = currentIndex
+        if (++nextIndex == audioList.size) nextIndex = 0
+        audioMap[NEXT] = audioList[nextIndex]
+        playNext()
+        currentIndex = nextIndex
     }
 
     private fun updateMetadata() {
@@ -425,6 +463,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
     companion object {
         const val ROOT = "/"
         const val REQUEST_STATE = "Request playback state"
+        const val SET_SHUFFLE = "Set shuffle"
 
         const val MAX_LAST_PLAYED = 10
         private const val TIME_RESTART = 5000L
@@ -447,5 +486,6 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         const val SHUFFLE_BUNDLE_KEY = "SHUFFLE_KEY"
         const val RANDOM = 1
         const val BY_SCORES = 2
+        const val ORDER = 3
     }
 }

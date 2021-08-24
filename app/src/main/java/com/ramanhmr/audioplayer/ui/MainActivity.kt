@@ -17,6 +17,7 @@ import com.ramanhmr.audioplayer.repositories.ArtRepository
 import com.ramanhmr.audioplayer.services.PlayerService
 import com.ramanhmr.audioplayer.ui.fragments.InfoFragment
 import com.ramanhmr.audioplayer.ui.fragments.ListFragment
+import com.ramanhmr.audioplayer.ui.fragments.LyricsFragment
 import com.ramanhmr.audioplayer.utils.MetadataUtils
 import com.ramanhmr.audioplayer.viewmodels.MainViewModel
 import org.koin.android.ext.android.inject
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var subscriptionCallback: MediaBrowserCompat.SubscriptionCallback
     private lateinit var controllerCallback: MediaControllerCompat.Callback
     private var showingInfo = false
+    private var currentFragment = LIST_FRAGMENT
     var shuffleMode = PlayerService.RANDOM
         private set
 
@@ -71,7 +73,7 @@ class MainActivity : AppCompatActivity() {
                 binding.fcList.id,
                 ListFragment::class.java,
                 null,
-                LIST_FRAGMENT_TAG
+                LIST_FRAGMENT
             ).commit()
     }
 
@@ -136,7 +138,7 @@ class MainActivity : AppCompatActivity() {
             val uri =
                 Uri.parse(metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
             binding.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, baseContext))
-            if (showingInfo) {
+            if (currentFragment == INFO_FRAGMENT) {
                 showInfo(metadata)
             }
         }
@@ -211,9 +213,9 @@ class MainActivity : AppCompatActivity() {
                 binding.fcList.id,
                 ListFragment::class.java,
                 null,
-                LIST_FRAGMENT_TAG
+                LIST_FRAGMENT
             ).commit()
-        showingInfo = false
+        currentFragment = LIST_FRAGMENT
     }
 
     fun showInfo(metadata: MediaMetadataCompat) {
@@ -221,31 +223,58 @@ class MainActivity : AppCompatActivity() {
             .replace(
                 binding.fcList.id,
                 InfoFragment.newInstance(metadata),
-                INFO_FRAGMENT_TAG
+                INFO_FRAGMENT
             )
             .apply {
-                if (!showingInfo) {
+                if (currentFragment == LIST_FRAGMENT) {
                     this.addToBackStack(BACKSTACK)
                 }
             }
             .commit()
-        showingInfo = true
+        currentFragment = INFO_FRAGMENT
+    }
+
+    fun showLyrics(lyrics: String, metadata: MediaMetadataCompat) {
+        supportFragmentManager.beginTransaction()
+            .replace(
+                binding.fcList.id,
+                LyricsFragment.newInstance(lyrics, metadata),
+                LYRICS_FRAGMENT
+            )
+//            .addToBackStack(BACKSTACK)
+            .commit()
+        currentFragment = LYRICS_FRAGMENT
     }
 
     fun removeInfo() {
-        val fragment = supportFragmentManager.findFragmentByTag(INFO_FRAGMENT_TAG)
+        val fragment = supportFragmentManager.findFragmentByTag(INFO_FRAGMENT)
         if (fragment != null) {
             supportFragmentManager.popBackStack()
             supportFragmentManager.beginTransaction()
                 .remove(fragment)
                 .commit()
         }
-        showingInfo = false
+        currentFragment = LIST_FRAGMENT
+    }
+
+    fun removeLyrics() {
+        val fragment = supportFragmentManager.findFragmentByTag(LYRICS_FRAGMENT)
+        if (fragment != null) {
+            supportFragmentManager.beginTransaction()
+                .replace(
+                    binding.fcList.id,
+                    InfoFragment.newInstance(mediaController.metadata),
+                    INFO_FRAGMENT
+                )
+                .commit()
+            currentFragment = INFO_FRAGMENT
+        }
     }
 
     companion object {
         private const val BACKSTACK = "Backstack"
-        private const val LIST_FRAGMENT_TAG = "ListFragment"
-        private const val INFO_FRAGMENT_TAG = "InfoFragment"
+        private const val LIST_FRAGMENT = "ListFragment"
+        private const val INFO_FRAGMENT = "InfoFragment"
+        private const val LYRICS_FRAGMENT = "LyricsFragment"
     }
 }

@@ -27,6 +27,11 @@ class InfoFragment : Fragment() {
     private val mainViewModel: MainViewModel by sharedViewModel()
     private val infoViewModel: InfoViewModel by viewModel()
     private val artRepository: ArtRepository by inject()
+    private val backPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            (activity as MainActivity).removeInfo()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,42 +47,32 @@ class InfoFragment : Fragment() {
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    (activity as MainActivity).removeInfo()
-                }
-            })
+            backPressedCallback
+        )
 
-        if (arguments != null && requireArguments().containsKey(METADATA_BUNDLE_KEY)) {
-            with(requireArguments().getParcelable<MediaMetadataCompat>(METADATA_BUNDLE_KEY)!!) {
-                binding?.let {
-                    val uri = Uri.parse(this.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
-                    it.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, requireContext()))
-                    val title = this.getString(MetadataUtils.TITLE)
-                    val artist = this.getString(MetadataUtils.ARTIST)
-                    infoViewModel.getLyrics(title, artist)
-                    it.tvTitle.text = title
-                    it.tvTitle.isSelected = true
-                    it.tvAlbum.text = this.getString(MetadataUtils.ALBUM)
-                    it.tvAlbum.isSelected = true
-                    it.tvArtist.text = artist
-                    it.tvEndTime.text =
-                        MetadataUtils.durationToString(this.getLong(MetadataUtils.DURATION))
-                    it.tvEndTime.isSelected = true
-                    it.seekBar.max =
-                        this.getLong(MetadataUtils.DURATION).toInt() / MainViewModel.MILLIS_UPDATE
-                    it.seekBar.setOnSeekBarChangeListener(getOnSeekBarChangeListener())
-                    it.tvCurrentTime.text = MetadataUtils.durationToString(0)
-                }
-            }
-        }
+        val metadata = requireArguments().getParcelable<MediaMetadataCompat>(METADATA_BUNDLE_KEY)!!
         with(binding!!) {
+            val uri = Uri.parse(metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI))
+            this.ivArt.setImageBitmap(artRepository.getAlbumArt(uri, requireContext()))
+            val title = metadata.getString(MetadataUtils.TITLE)
+            val artist = metadata.getString(MetadataUtils.ARTIST)
+            infoViewModel.getLyrics(title, artist)
+            tvTitle.text = title
+            tvTitle.isSelected = true
+            tvAlbum.text = metadata.getString(MetadataUtils.ALBUM)
+            tvAlbum.isSelected = true
+            tvArtist.text = artist
+            tvEndTime.text =
+                MetadataUtils.durationToString(metadata.getLong(MetadataUtils.DURATION))
+            tvEndTime.isSelected = true
+            seekBar.max =
+                metadata.getLong(MetadataUtils.DURATION).toInt() / MainViewModel.MILLIS_UPDATE
+            seekBar.setOnSeekBarChangeListener(getOnSeekBarChangeListener())
+            tvCurrentTime.text = MetadataUtils.durationToString(0)
             btnLyrics.setOnClickListener {
                 infoViewModel.lyricsLiveData.observe(viewLifecycleOwner, {
-                    tvLyrics.visibility = View.VISIBLE
-                    tvLyrics.text = it
+                    (requireActivity() as MainActivity).showLyrics(it, metadata)
                 })
-
             }
         }
         requireActivity().mediaController.transportControls.sendCustomAction(
@@ -88,6 +83,11 @@ class InfoFragment : Fragment() {
             updateProgress(it / MainViewModel.MILLIS_UPDATE)
             binding!!.tvCurrentTime.text = MetadataUtils.durationToString(it)
         })
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        binding = null
     }
 
     private fun getOnSeekBarChangeListener() = object : SeekBar.OnSeekBarChangeListener {
@@ -108,11 +108,6 @@ class InfoFragment : Fragment() {
 
     private fun updateProgress(progress: Int) {
         binding!!.seekBar.progress = progress
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        binding = null
     }
 
     companion object {

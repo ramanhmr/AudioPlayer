@@ -13,6 +13,9 @@ class InfoViewModel(private val lyricsRepository: LyricsRepository) : ViewModel(
 
     fun getLyrics(title: String, artist: String) = viewModelScope.launch {
         val lyrics = async { lyricsRepository.getLyrics(title, artist) }
-        lyricsLiveData.postValue(lyrics.await())
+        val resultLyrics = lyrics.await()
+        if (resultLyrics == null) {
+            lyricsLiveData.postValue("No lyrics for track $title - $artist found")
+        } else lyricsLiveData.postValue(resultLyrics)
     }
 }
