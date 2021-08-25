@@ -7,6 +7,8 @@
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/defauld_album.xml" value="0.221875" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/divider.xml" value="0.221875" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/edit.xml" value="0.3828125" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/ic_launcher_background.xml" value="0.3828125" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/ic_play_button.xml" value="0.3828125" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/next.xml" value="0.22135416666666666" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/pause.xml" value="0.221875" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/drawable/play.xml" value="0.221875" />
@@ -26,6 +28,7 @@
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/fragment_play_controls.xml" value="0.20572916666666666" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/item_audio.xml" value="0.20520833333333333" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/layout/item_audio_file.xml" value="0.23052536231884058" />
+        <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.3828125" />
         <entry key="..\:/Users/Owner/AndroidStudioProjects/AudioPlayer/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" value="0.3828125" />
       </map>
     </option>
