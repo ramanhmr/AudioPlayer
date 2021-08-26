@@ -287,7 +287,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                 NotificationChannel(
                     CHANNEL_ID,
                     NOTIFICATION_CHANNEL,
-                    NotificationManager.IMPORTANCE_HIGH
+                    NotificationManager.IMPORTANCE_LOW
                 )
             )
         }

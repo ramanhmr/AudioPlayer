@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var mediaController: MediaControllerCompat
     private lateinit var subscriptionCallback: MediaBrowserCompat.SubscriptionCallback
     private lateinit var controllerCallback: MediaControllerCompat.Callback
-    private var showingInfo = false
     private var currentFragment = LIST_FRAGMENT
     var shuffleMode = PlayerService.RANDOM
         private set
@@ -66,6 +65,7 @@ class MainActivity : AppCompatActivity() {
                 checkControlsPausePlay()
             }
             ivArt.setOnClickListener { showInfo(mediaController.metadata) }
+            ivShuffle.setOnClickListener { changeShuffleMod() }
         }
 
         supportFragmentManager.beginTransaction()
@@ -75,6 +75,42 @@ class MainActivity : AppCompatActivity() {
                 null,
                 LIST_FRAGMENT
             ).commit()
+    }
+
+    private fun changeShuffleMod() {
+        when (shuffleMode) {
+            PlayerService.RANDOM -> {
+                mediaController.transportControls.sendCustomAction(
+                    PlayerService.SET_SHUFFLE,
+                    Bundle().apply { putInt(PlayerService.SHUFFLE_BUNDLE_KEY, PlayerService.ORDER) }
+                )
+                binding.ivShuffle.setImageDrawable(
+                    AppCompatResources.getDrawable(
+                        this,
+                        R.drawable.shuffle_order
+                    )
+                )
+                shuffleMode = PlayerService.ORDER
+            }
+            PlayerService.ORDER -> {
+                mediaController.transportControls.sendCustomAction(
+                    PlayerService.SET_SHUFFLE,
+                    Bundle().apply {
+                        putInt(
+                            PlayerService.SHUFFLE_BUNDLE_KEY,
+                            PlayerService.RANDOM
+                        )
+                    }
+                )
+                binding.ivShuffle.setImageDrawable(
+                    AppCompatResources.getDrawable(
+                        this,
+                        R.drawable.shuffle_random
+                    )
+                )
+                shuffleMode = PlayerService.RANDOM
+            }
+        }
     }
 
     private fun getConnectionCallback() = object : MediaBrowserCompat.ConnectionCallback() {
