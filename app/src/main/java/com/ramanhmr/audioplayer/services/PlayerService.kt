@@ -28,6 +28,10 @@ import com.ramanhmr.audioplayer.repositories.ArtRepository
 import com.ramanhmr.audioplayer.ui.MainActivity
 import com.ramanhmr.audioplayer.utils.LastItemsQueue
 import com.ramanhmr.audioplayer.utils.MetadataUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.core.component.KoinApiExtension
 import kotlin.random.Random
@@ -36,6 +40,7 @@ import kotlin.random.Random
 class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListener {
     private val fileDao: FileDao by inject()
     private val artRepository: ArtRepository by inject()
+    private val ioScope = CoroutineScope(Dispatchers.IO + Job())
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var mediaSession: MediaSessionCompat
     private lateinit var mediaSessionCallback: MediaSessionCompat.Callback
@@ -101,9 +106,8 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                                     playbackSpeed
                                 )
                                 .setActions(
-                                    PlaybackStateCompat.ACTION_STOP
-                                            or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                            or if (mediaPlayer.isPlaying) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
+                                    if (mediaPlayer.isPlaying) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
+                                            or STOP_NEXT_PREV_ACTIONS
                                 )
                                 .build()
                         mediaSession.setPlaybackState(playbackState)
@@ -128,9 +132,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                         )
                         .setActions(
                             PlaybackStateCompat.ACTION_PAUSE
-                                    or PlaybackStateCompat.ACTION_STOP
-                                    or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                    or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                                    or STOP_NEXT_PREV_ACTIONS
                         )
                         .build()
                 mediaSession.setPlaybackState(playbackState)
@@ -155,9 +157,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                         )
                         .setActions(
                             PlaybackStateCompat.ACTION_PLAY
-                                    or PlaybackStateCompat.ACTION_STOP
-                                    or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                    or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                                    or STOP_NEXT_PREV_ACTIONS
                         )
                         .build()
                 mediaSession.setPlaybackState(playbackState)
@@ -220,7 +220,10 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                     ORDER -> {
                         var previousIndex = currentIndex
                         if (--previousIndex < 0) previousIndex = audioList.size
-                        audioMap[NEXT] = audioList[previousIndex]
+                        currentIndex = previousIndex
+                        audioMap[CURRENT] = audioList[previousIndex]
+                        playUri(audioMap[CURRENT]!!.uri)
+                        updateMetadata()
                     }
                     else -> {
                         if (lastPlayed.hasPrevious()) {
@@ -259,11 +262,11 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             }
 
             if (audioMap[CURRENT] == null) {
-                audioMap[CURRENT] = fileDao.getFileByUri(uri)
+                ioScope.launch { audioMap[CURRENT] = fileDao.getFileByUri(uri) }
                 playUri(uri)
                 lastPlayed.add(audioMap[CURRENT]!!)
             } else if (audioMap[CURRENT]!!.uri != uri) {
-                audioMap[CURRENT] = fileDao.getFileByUri(uri)
+                ioScope.launch { audioMap[CURRENT] = fileDao.getFileByUri(uri) }
                 playUri(uri)
                 lastPlayed.add(audioMap[CURRENT]!!)
             }
@@ -298,7 +301,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
 
     private fun getAllMedia() {
         audioList.clear()
-        audioList.addAll(fileDao.getAllFiles())
+        ioScope.launch { audioList.addAll(fileDao.getAllFiles(null)) }
     }
 
     private fun setShuffleFromExtras(extras: Bundle?) {
@@ -391,7 +394,7 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
             setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession.sessionToken)
-                    .setShowActionsInCompactView(0, 1)
+                    .setShowActionsInCompactView(1, 2)
             )
             setSilent(true)
             priority = NotificationCompat.PRIORITY_MAX
@@ -408,6 +411,16 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                     applicationContext,
                     PlaybackStateCompat.ACTION_STOP
+                )
+            )
+            addAction(
+                NotificationCompat.Action(
+                    R.drawable.previous,
+                    "Previous",
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this@PlayerService,
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                    )
                 )
             )
             when (buttonKey) {
@@ -466,8 +479,11 @@ class PlayerService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListe
         const val SET_SHUFFLE = "Set shuffle"
 
         const val MAX_LAST_PLAYED = 10
+
         private const val TIME_RESTART = 5000L
 
+        private const val STOP_NEXT_PREV_ACTIONS =
+            PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
         private const val LOG_TAG = "THIS_PLAYER"
         private const val SERVICE_ID = 315465
         private const val NOTIFICATION_CHANNEL = "com.rammanhmr.audioplayer"

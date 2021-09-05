@@ -3,57 +3,42 @@ package com.ramanhmr.audioplayer.utils
 import java.util.*
 
 class LastItemsQueue<E>(private val maxItemCount: Int) : Iterable<E> {
-    private val list = LinkedList<E>()
+    private val items = LinkedList<E>()
     private var currentIndex = 0
 
     fun add(e: E): Boolean {
-        with(list) {
+        with(items) {
             addFirst(e)
             while (size > maxItemCount) removeLast()
         }
         return true
     }
 
-    fun hasPrevious(): Boolean {
-        try {
-            list[currentIndex + 1]
-        } catch (e: IndexOutOfBoundsException) {
-            return false
-        }
-        return true
-    }
+    fun hasPrevious(): Boolean = currentIndex + 1 < items.size
 
     fun previous(): E? {
         return if (currentIndex < maxItemCount - 1) {
-            list[++currentIndex]
-        } else list[currentIndex]
+            items[++currentIndex]
+        } else items[currentIndex]
     }
 
+    fun hasNext(): Boolean = currentIndex - 1 >= 0
 
-    fun hasNext(): Boolean {
-        try {
-            list[currentIndex - 1]
-        } catch (e: IndexOutOfBoundsException) {
-            return false
-        }
-        return true
-    }
-
-    fun next(): E? = if (currentIndex > 0) list[--currentIndex] else null
+    fun next(): E? = if (currentIndex > 0) items[--currentIndex] else null
 
     fun deleteHeadToCurrent() {
         for (i in 0 until currentIndex) {
-            list.remove()
+            items.remove()
         }
         currentIndex = 0
     }
 
     override fun iterator() = object : Iterator<E> {
-        val size = list.size
+        val size = items.size
         var i = 0
 
         override fun hasNext(): Boolean = i < size
 
-        override fun next(): E = list[i++]
+        override fun next(): E = items[i++]
     }
 }

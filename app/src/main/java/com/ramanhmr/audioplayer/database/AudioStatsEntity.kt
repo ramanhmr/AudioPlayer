@@ -1,5 +1,8 @@
-package com.ramanhmr.audioplayer.entities
+package com.ramanhmr.audioplayer.database
 
+import androidx.room.Entity
+
+@Entity(tableName = "audio_stats", primaryKeys = ["title", "artist", "album"])
 data class AudioStatsEntity(
     val uri: String,
     val title: String,

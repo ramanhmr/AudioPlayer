@@ -7,27 +7,34 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.ramanhmr.audioplayer.entities.AudioFile
+import com.ramanhmr.audioplayer.interfaces.FileSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-class FileDao(private val context: Context) {
+class FileDao(private val context: Context) : FileSource {
 
-    fun getAllFiles(sortOrder: String? = MediaStore.Audio.Media.TITLE): List<AudioFile> {
+    override suspend fun getAllFiles(sortOrder: String?): List<AudioFile> {
         val files = mutableListOf<AudioFile>()
 
-        val baseUri = getMainUri()
-        val cursor = getCursor(baseUri, sortOrder, getProjection())
-        while (cursor?.moveToNext() == true) {
-            files += cursor.getAudioFile(baseUri)
+        withContext(Dispatchers.IO) {
+            val baseUri = getMainUri()
+            val cursor =
+                getCursor(baseUri, sortOrder ?: MediaStore.Audio.Media.TITLE, getProjection())
+            while (cursor?.moveToNext() == true) {
+                files += cursor.getAudioFile(baseUri)
+            }
+            cursor?.close()
         }
-        cursor?.close()
-
         return files
     }
 
-    fun getFileByUri(uri: Uri): AudioFile? {
-        val cursor = getCursor(uri, null, getProjection())
-        val file = if (cursor?.moveToFirst() == true) cursor.getAudioFileSetUri(uri) else null
-        cursor?.close()
-
+    override suspend fun getFileByUri(uri: Uri): AudioFile? {
+        var file: AudioFile?
+        withContext(Dispatchers.IO) {
+            val cursor = getCursor(uri, null, getProjection())
+            file = if (cursor?.moveToFirst() == true) cursor.getAudioFileSetUri(uri) else null
+            cursor?.close()
+        }
         return file
     }
 

@@ -1,14 +1,18 @@
 package com.ramanhmr.audioplayer.repositories
 
+import com.ramanhmr.audioplayer.interfaces.LyricsSource
 import com.ramanhmr.audioplayer.restApi.LyricsApi
 import com.ramanhmr.audioplayer.restApi.LyricsResponseModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class LyricsRepository(private val lyricsApi: LyricsApi) {
+class LyricsRepository(private val lyricsApi: LyricsApi) : LyricsSource {
 
-    suspend fun getLyrics(title: String, artist: String) = withContext(Dispatchers.IO) {
-        lyricsApi.getLyricsResponse(title, artist).toLyricsString()
+    override suspend fun getLyrics(title: String, artist: String): String {
+        val lyrics = withContext(Dispatchers.IO) {
+            lyricsApi.getLyricsResponse(title, artist).toLyricsString()
+        }
+        return lyrics ?: "No lyrics for track $title - $artist found"
     }
 
     private fun LyricsResponseModel.toLyricsString(): String? {

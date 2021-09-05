@@ -19,10 +19,14 @@ class MainViewModel(private val audioRepository: AudioRepository) : ViewModel() 
     private var progressIncrement: Job? = null
 
     fun updateAudio() {
-        audioLiveData.postValue(audioRepository.getAllItems())
+        viewModelScope.launch {
+            audioLiveData.postValue(audioRepository.getAllItems())
+        }
     }
 
-    fun getAudioByUri(uri: Uri) = audioRepository.getItemByUri(uri)
+    fun getAudioByUri(uri: Uri) {
+        viewModelScope.launch { audioRepository.getItemByUri(uri) }
+    }
 
     fun setProgress(progress: Int) {
         positionLiveData.postValue(progress * MILLIS_UPDATE)
